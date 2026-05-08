@@ -62,36 +62,33 @@ export default function App() {
     window.speechSynthesis.speak(msg);
   };
 
-  // 🎤 MIC
+  // 🎤 MIC FIXED
   const startListening = () => {
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) return;
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) return;
 
-  const rec = new SR();
-  recognitionRef.current = rec;
+    const rec = new SR();
+    recognitionRef.current = rec;
 
-  rec.lang = "hi-IN";
-  rec.continuous = false; // 🔥 IMPORTANT FIX
-  rec.interimResults = false;
-  rec.maxAlternatives = 1;
+    rec.lang = "hi-IN";
+    rec.continuous = false;
+    rec.interimResults = false;
 
-  rec.start();
+    rec.start();
 
-  rec.onresult = (e) => {
-    const voice =
-      e.results[0][0].transcript.toLowerCase().trim();
+    rec.onresult = (e) => {
+      const voice =
+        e.results[0][0].transcript.toLowerCase().trim();
 
-    console.log("Heard:", voice);
+      checkAnswer(voice);
+    };
 
-    checkAnswer(voice);
+    rec.onend = () => {
+      if (!lockRef.current) {
+        setTimeout(() => rec.start(), 800);
+      }
+    };
   };
-
-  rec.onend = () => {
-    if (!lockRef.current) {
-      setTimeout(() => rec.start(), 800); // small delay FIX
-    }
-  };
-};
 
   // 🌟 START
   useEffect(() => {
@@ -113,45 +110,40 @@ export default function App() {
     }, 800);
   }, [index]);
 
-  // ✅ ANSWER CHECK (FIXED)
+  // ✅ ANSWER CHECK
   const checkAnswer = (voice) => {
-  const cleanedVoice = voice
-    .toLowerCase()
-    .replace(/[^a-zA-Z ]/g, "")
-    .trim();
+    const cleanedVoice = voice
+      .toLowerCase()
+      .replace(/[^a-zA-Z ]/g, "")
+      .trim();
 
-  const cleanedAnswer = q.answer.toLowerCase();
+    const cleanedAnswer = q.answer.toLowerCase();
 
-  const isCorrect =
-    cleanedVoice === cleanedAnswer ||
-    cleanedVoice.includes(cleanedAnswer) ||
-    cleanedAnswer.includes(cleanedVoice);
+    const isCorrect =
+      cleanedVoice.includes(cleanedAnswer) ||
+      cleanedAnswer.includes(cleanedVoice);
 
-  console.log("Clean:", cleanedVoice, "Answer:", cleanedAnswer);
+    if (isCorrect) {
+      const msg = `हो ${q.answer} correct answer!👏`;
 
-  if (isCorrect) {
-    const msg = `हो ${q.answer} correct answer!👏`;
+      setMessage(msg);
+      speak(msg);
 
-    setMessage(msg);
-    speak(msg);
+      confetti({
+        particleCount: 300,
+        spread: 180,
+        origin: { y: 0.6 }
+      });
 
-    confetti({
-      particleCount: 300,
-      spread: 180,
-      origin: { y: 0.6 }
-    });
+      setTimeout(() => {
+        setIndex((p) => (p + 1) % questions.length);
+      }, 2000);
 
-    lockRef.current = true;
-
-    setTimeout(() => {
-      setIndex((p) => (p + 1) % questions.length);
-    }, 2000);
-
-  } else {
-    setMessage("😄 पुन्हा प्रयत्न करा!");
-    speak("पुन्हा प्रयत्न करा");
-  }
-};
+    } else {
+      setMessage("😄 पुन्हा प्रयत्न करा!");
+      speak("पुन्हा प्रयत्न करा");
+    }
+  };
 
   return (
     <>
@@ -161,46 +153,46 @@ export default function App() {
       </audio>
 
       {/* 🌈 BACKGROUND */}
-      <div className="min-h-screen relative flex flex-col items-center justify-center p-6 overflow-hidden
+      <div className="min-h-screen relative flex flex-col items-center justify-center p-4 sm:p-6 overflow-hidden
         bg-gradient-to-br from-sky-300 via-pink-300 to-yellow-200">
 
         {/* DECOR */}
-        <div className="absolute text-5xl top-5 left-5 animate-bounce">☁️</div>
-        <div className="absolute text-5xl top-10 right-10 animate-bounce">🌈</div>
-        <div className="absolute text-5xl bottom-10 left-10 animate-bounce">🌟</div>
-        <div className="absolute text-5xl bottom-5 right-5 animate-bounce">🎊</div>
+        <div className="absolute text-4xl sm:text-5xl top-5 left-5 animate-bounce">☁️</div>
+        <div className="absolute text-4xl sm:text-5xl top-10 right-10 animate-bounce">🌈</div>
+        <div className="absolute text-4xl sm:text-5xl bottom-10 left-10 animate-bounce">🌟</div>
+        <div className="absolute text-4xl sm:text-5xl bottom-5 right-5 animate-bounce">🎊</div>
 
         {/* TITLE */}
-        <h1 className="text-6xl font-extrabold text-white drop-shadow-2xl animate-pulse text-center">
+        <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold text-white drop-shadow-2xl animate-pulse text-center">
           🎮 Kids Cartoon Learning World 🎈
         </h1>
 
         {/* QUESTION */}
-        <div className="mt-8 bg-white/90 p-8 rounded-[50px] shadow-2xl border-4 border-yellow-300 w-[90%] max-w-3xl text-center">
-          <h2 className="text-4xl font-bold text-purple-700">
+        <div className="mt-6 sm:mt-8 bg-white/90 p-6 sm:p-8 rounded-[40px] shadow-2xl border-4 border-yellow-300 w-[95%] sm:w-[90%] max-w-3xl text-center">
+          <h2 className="text-xl sm:text-3xl lg:text-4xl font-bold text-purple-700">
             {q.question}
           </h2>
         </div>
 
-        {/* OPTIONS (ONE ROW FIXED) */}
-        <div className="mt-10 w-full flex justify-center">
-          <div className="flex flex-nowrap gap-8 overflow-x-auto px-4">
+        {/* OPTIONS GRID (RESPONSIVE FIX) */}
+        <div className="mt-8 sm:mt-10 w-full flex justify-center">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-10">
 
             {q.options.map((opt, i) => (
               <div
                 key={i}
                 onClick={() => checkAnswer(opt.name.toLowerCase())}
-                className="min-w-[320px] h-[420px] bg-white rounded-[45px] shadow-2xl 
-                border-4 border-pink-300 flex flex-col items-center justify-center 
-                hover:scale-110 transition cursor-pointer"
+                className="w-[260px] sm:w-[300px] lg:w-[340px] h-[360px] sm:h-[400px] lg:h-[440px]
+                bg-white rounded-[40px] shadow-2xl border-4 border-pink-300
+                flex flex-col items-center justify-center hover:scale-105 transition cursor-pointer"
               >
-                {/* 🔥 IMAGE HEIGHT REDUCED */}
                 <img
                   src={opt.img}
-                  className="w-[280px] h-[240px] object-cover rounded-3xl shadow-lg"
+                  className="w-[200px] sm:w-[240px] lg:w-[280px] h-[180px] sm:h-[200px] lg:h-[220px]
+                  object-cover rounded-3xl shadow-lg"
                 />
 
-                <h2 className="mt-5 text-3xl font-extrabold text-purple-700">
+                <h2 className="mt-4 sm:mt-5 text-xl sm:text-2xl lg:text-3xl font-extrabold text-purple-700">
                   {opt.name}
                 </h2>
               </div>
@@ -211,7 +203,7 @@ export default function App() {
 
         {/* MESSAGE */}
         {message && (
-          <div className="mt-10 bg-white px-10 py-5 rounded-full text-3xl font-bold text-green-600 animate-bounce shadow-2xl">
+          <div className="mt-8 sm:mt-10 bg-white px-6 sm:px-10 py-3 sm:py-5 rounded-full text-xl sm:text-2xl lg:text-3xl font-bold text-green-600 animate-bounce shadow-2xl text-center">
             {message}
           </div>
         )}
