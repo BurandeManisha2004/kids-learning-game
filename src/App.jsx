@@ -130,9 +130,9 @@ export default function App() {
   console.log("Clean:", cleanedVoice, "Answer:", cleanedAnswer);
 
   if (isCorrect) {
-    const msg = `हो ${q.answer} correct answer!👏`;
+    const msg = `हो ${q.answer} correct answer!`;
 
-    setMessage(msg);
+    setMessage(msg+"👏");
     speak(msg);
 
     confetti({
