@@ -21,7 +21,6 @@ const questions = [
       }
     ]
   },
-
   {
     question: "आपण काय पितो?",
     answer: "water",
@@ -44,27 +43,22 @@ const questions = [
 ];
 
 export default function App() {
-
   const [index, setIndex] = useState(0);
   const [message, setMessage] = useState("");
 
   const recognitionRef = useRef(null);
-  const lockRef = useRef(false);
+  const lockRef = useRef(true);
   const audioRef = useRef(null);
 
   const q = questions[index];
 
   // 🎵 MUSIC
   useEffect(() => {
-
     const startMusic = () => {
-
       if (audioRef.current) {
-
         audioRef.current.volume = 0.25;
 
         audioRef.current.play().catch(() => {});
-
       }
     };
 
@@ -72,42 +66,49 @@ export default function App() {
       once: true
     });
 
+    return () => {
+      window.removeEventListener("click", startMusic);
+    };
   }, []);
 
   // 🔊 SPEAK
   const speak = (text, cb) => {
-
     window.speechSynthesis.cancel();
 
     const msg = new SpeechSynthesisUtterance(text);
 
-    const voices = window.speechSynthesis.getVoices();
+    const loadVoices = () => {
+      const voices = window.speechSynthesis.getVoices();
 
-    msg.voice =
-      voices.find((v) => v.lang.includes("hi")) ||
-      voices[0];
+      msg.voice =
+        voices.find((v) => v.lang.includes("hi")) ||
+        voices[0];
 
-    msg.lang = "hi-IN";
+      msg.lang = "hi-IN";
 
-    msg.rate = 0.95;
+      msg.rate = 0.95;
 
-    msg.pitch = 1.2;
+      msg.pitch = 1.2;
 
-    msg.onend = () => {
+      msg.onend = () => {
+        if (cb) cb();
+      };
 
-      if (cb) cb();
-
+      window.speechSynthesis.speak(msg);
     };
 
-    window.speechSynthesis.speak(msg);
-
+    if (
+      window.speechSynthesis.getVoices().length === 0
+    ) {
+      window.speechSynthesis.onvoiceschanged =
+        loadVoices;
+    } else {
+      loadVoices();
+    }
   };
 
-  // 🎤 MIC START
+  // 🎤 LISTEN
   const startListening = () => {
-
-    if (lockRef.current) return;
-
     const SR =
       window.SpeechRecognition ||
       window.webkitSpeechRecognition;
@@ -117,21 +118,11 @@ export default function App() {
       return;
     }
 
-    // OLD MIC STOP
-    if (recognitionRef.current) {
-
-      recognitionRef.current.onend = null;
-
-      recognitionRef.current.stop();
-
-    }
-
     const rec = new SR();
 
     recognitionRef.current = rec;
 
-    // ✅ ENGLISH WORDS LISTEN
-    rec.lang = "en-US";
+    rec.lang = "hi-IN";
 
     rec.continuous = false;
 
@@ -139,92 +130,63 @@ export default function App() {
 
     rec.maxAlternatives = 1;
 
-    rec.onstart = () => {
-
-      console.log("🎤 Mic Started");
-
-    };
+    rec.start();
 
     rec.onresult = (e) => {
-
-      const voice =
-        e.results[0][0].transcript
-          .toLowerCase()
-          .trim();
+      const voice = e.results[0][0].transcript
+        .toLowerCase()
+        .trim();
 
       console.log("Heard:", voice);
 
       checkAnswer(voice);
-
     };
 
     rec.onerror = (e) => {
-
-      console.log("Mic Error:", e.error);
-
+      console.log(e.error);
     };
 
     rec.onend = () => {
-
-      console.log("🎤 Mic Stopped");
-
-      // ✅ ANSWER मिळेपर्यंत MIC चालू
       if (!lockRef.current) {
-
         setTimeout(() => {
-
-          startListening();
-
-        }, 700);
-
+          rec.start();
+        }, 800);
       }
     };
-
-    setTimeout(() => {
-
-      rec.start();
-
-    }, 300);
-
   };
 
-  // 🌟 INTRO + FIRST QUESTION FIX
+  // 🌟 START
   useEffect(() => {
-
-    lockRef.current = true;
-
-    setTimeout(() => {
-
+    const startGame = () => {
       speak(
         "🎮 Welcome childrens! चला मजा करूया!",
         () => {
-
           setTimeout(() => {
-
             speak(q.speak, () => {
-
               lockRef.current = false;
 
-              setTimeout(() => {
-
-                startListening();
-
-              }, 500);
-
+              startListening();
             });
-
-          }, 800);
-
+          }, 1000);
         }
       );
+    };
 
-    }, 1000);
+    // browser interaction required
+    window.addEventListener("click", startGame, {
+      once: true
+    });
 
+    return () => {
+      window.removeEventListener(
+        "click",
+        startGame
+      );
+    };
   }, []);
 
-  // 🔁 NEXT QUESTION
+  // 🔁 QUESTION CHANGE
   useEffect(() => {
-
     if (index === 0) return;
 
     setMessage("");
@@ -232,55 +194,36 @@ export default function App() {
     lockRef.current = true;
 
     if (recognitionRef.current) {
-
       recognitionRef.current.stop();
-
     }
 
     setTimeout(() => {
-
       speak(q.speak, () => {
-
         lockRef.current = false;
 
-        setTimeout(() => {
-
-          startListening();
-
-        }, 500);
-
+        startListening();
       });
-
-    }, 1000);
-
+    }, 800);
   }, [index]);
 
-  // ✅ ANSWER CHECK
+  // ✅ CHECK
   const checkAnswer = (voice) => {
-
     const cleanedVoice = voice
       .toLowerCase()
-      .replace(/[^a-z]/g, "")
+      .replace(/[^a-zA-Z ]/g, "")
       .trim();
 
     const cleanedAnswer = q.answer
       .toLowerCase()
       .trim();
 
-    console.log("Voice:", cleanedVoice);
-
-    console.log("Answer:", cleanedAnswer);
-
-    // ✅ EXACT MATCH
     const isCorrect =
-      cleanedVoice === cleanedAnswer;
+      cleanedVoice === cleanedAnswer ||
+      cleanedVoice.includes(cleanedAnswer) ||
+      cleanedAnswer.includes(cleanedVoice);
 
     if (isCorrect) {
-
-      lockRef.current = true;
-
-      const msg =
-        `हो ${q.answer} correct answer`;
+      const msg = `हो ${q.answer} correct answer`;
 
       setMessage(msg + " 👏");
 
@@ -292,30 +235,15 @@ export default function App() {
         origin: { y: 0.6 }
       });
 
-      // 🛑 MIC STOP
-      if (recognitionRef.current) {
+      lockRef.current = true;
 
-        recognitionRef.current.stop();
-
-      }
-
-      // ➡️ NEXT QUESTION
       setTimeout(() => {
-
-        setIndex((prev) =>
-          (prev + 1) % questions.length
-        );
-
-        lockRef.current = false;
-
+        setIndex((p) => (p + 1) % questions.length);
       }, 2500);
-
     } else {
-
       setMessage("😄 पुन्हा प्रयत्न करा!");
 
       speak("पुन्हा प्रयत्न करा");
-
     }
   };
 
@@ -326,200 +254,71 @@ export default function App() {
         <source src="https://www.bensound.com/bensound-music/bensound-littleidea.mp3" />
       </audio>
 
-      {/* 🌈 BACKGROUND */}
-      <div
-        className="
-        min-h-screen
-        relative
-        flex
-        flex-col
-        items-center
-        justify-center
-        p-4
-        sm:p-6
-        overflow-hidden
-        bg-gradient-to-br
-        from-sky-300
-        via-pink-300
-        to-yellow-200
-      "
-      >
+      {/* 🌈 MAIN */}
+      <div className="min-h-screen relative flex flex-col items-center justify-center p-4 sm:p-6 overflow-hidden bg-gradient-to-br from-sky-300 via-pink-300 to-yellow-200">
 
         {/* DECOR */}
-        <div className="absolute text-4xl sm:text-5xl top-5 left-5 animate-bounce">
+        <div className="absolute text-5xl top-5 left-5 animate-bounce">
           ☁️
         </div>
 
-        <div className="absolute text-4xl sm:text-5xl top-10 right-10 animate-bounce">
+        <div className="absolute text-5xl top-10 right-10 animate-bounce">
           🌈
         </div>
 
-        <div className="absolute text-4xl sm:text-5xl bottom-10 left-10 animate-bounce">
+        <div className="absolute text-5xl bottom-10 left-10 animate-bounce">
           🌟
         </div>
 
-        <div className="absolute text-4xl sm:text-5xl bottom-5 right-5 animate-bounce">
+        <div className="absolute text-5xl bottom-5 right-5 animate-bounce">
           🎊
         </div>
 
         {/* TITLE */}
-        <h1
-          className="
-          text-3xl
-          sm:text-5xl
-          lg:text-6xl
-          font-extrabold
-          text-white
-          drop-shadow-2xl
-          animate-pulse
-          text-center
-        "
-        >
+        <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold text-white drop-shadow-2xl animate-pulse text-center">
           🎮 Kids Cartoon Learning World 🎈
         </h1>
 
         {/* QUESTION */}
-        <div
-          className="
-          mt-6
-          sm:mt-8
-          bg-white/90
-          p-6
-          sm:p-8
-          rounded-[40px]
-          shadow-2xl
-          border-4
-          border-yellow-300
-          w-[95%]
-          sm:w-[90%]
-          max-w-3xl
-          text-center
-        "
-        >
-          <h2
-            className="
-            text-xl
-            sm:text-3xl
-            lg:text-4xl
-            font-bold
-            text-purple-700
-          "
-          >
+        <div className="mt-8 bg-white/90 p-6 sm:p-8 rounded-[40px] shadow-2xl border-4 border-yellow-300 w-[95%] sm:w-[90%] max-w-3xl text-center">
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-purple-700">
             {q.question}
           </h2>
         </div>
 
         {/* OPTIONS */}
-        <div className="mt-8 sm:mt-10 w-full flex justify-center">
-
-          <div
-            className="
-            grid
-            grid-cols-1
-            sm:grid-cols-2
-            lg:grid-cols-3
-            gap-6
-            sm:gap-10
-          "
-          >
+        <div className="mt-10 w-full flex justify-center">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-10">
 
             {q.options.map((opt, i) => (
-
               <div
                 key={i}
                 onClick={() =>
-                  checkAnswer(
-                    opt.name.toLowerCase()
-                  )
+                  checkAnswer(opt.name.toLowerCase())
                 }
-                className="
-                w-[260px]
-                sm:w-[300px]
-                lg:w-[340px]
-                h-[360px]
-                sm:h-[400px]
-                lg:h-[440px]
-                bg-white
-                rounded-[40px]
-                shadow-2xl
-                border-4
-                border-pink-300
-                flex
-                flex-col
-                items-center
-                justify-center
-                hover:scale-105
-                transition
-                cursor-pointer
-              "
+                className="w-[260px] sm:w-[300px] lg:w-[340px] h-[360px] sm:h-[400px] lg:h-[440px] bg-white rounded-[40px] shadow-2xl border-4 border-pink-300 flex flex-col items-center justify-center hover:scale-105 transition cursor-pointer"
               >
-
                 <img
                   src={opt.img}
                   alt={opt.name}
-                  className="
-                  w-[200px]
-                  sm:w-[240px]
-                  lg:w-[280px]
-                  h-[180px]
-                  sm:h-[200px]
-                  lg:h-[220px]
-                  object-cover
-                  rounded-3xl
-                  shadow-lg
-                "
+                  className="w-[200px] sm:w-[240px] lg:w-[280px] h-[180px] sm:h-[200px] lg:h-[220px] object-cover rounded-3xl shadow-lg"
                 />
 
-                <h2
-                  className="
-                  mt-4
-                  sm:mt-5
-                  text-xl
-                  sm:text-2xl
-                  lg:text-3xl
-                  font-extrabold
-                  text-purple-700
-                "
-                >
+                <h2 className="mt-5 text-2xl lg:text-3xl font-extrabold text-purple-700">
                   {opt.name}
                 </h2>
-
               </div>
-
             ))}
 
           </div>
-
         </div>
 
         {/* MESSAGE */}
         {message && (
-
-          <div
-            className="
-            mt-8
-            sm:mt-10
-            bg-white
-            px-6
-            sm:px-10
-            py-3
-            sm:py-5
-            rounded-full
-            text-xl
-            sm:text-2xl
-            lg:text-3xl
-            font-bold
-            text-green-600
-            animate-bounce
-            shadow-2xl
-            text-center
-          "
-          >
+          <div className="mt-10 bg-white px-8 py-4 rounded-full text-2xl lg:text-3xl font-bold text-green-600 animate-bounce shadow-2xl text-center">
             {message}
           </div>
-
         )}
-
       </div>
     </>
   );
