@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import confetti from "canvas-confetti";
 
 const questions = [
@@ -21,6 +21,7 @@ const questions = [
       }
     ]
   },
+
   {
     question: "आपण काय पितो?",
     answer: "water",
@@ -32,11 +33,31 @@ const questions = [
       },
       {
         name: "Home",
-        img: "https://c8.alamy.com/comp/BN50GH/a-typical-house-in-konkan-area-maharastra-BN50GH.jpg"
+        img: "https://images.pexels.com/photos/106399/pexels-photo-106399.jpeg"
       },
       {
         name: "Light",
-        img: "https://wallpapers.com/images/hd/light-bulb-my2d214cczlezksx.jpg"
+        img: "https://images.pexels.com/photos/577514/pexels-photo-577514.jpeg"
+      }
+    ]
+  },
+
+  {
+    question: "आपण कुठे राहतो?",
+    answer: "home",
+    speak: "आपण कुठे राहतो?",
+    options: [
+      {
+        name: "Home",
+        img: "https://images.pexels.com/photos/106399/pexels-photo-106399.jpeg"
+      },
+      {
+        name: "Apple",
+        img: "https://images.pexels.com/photos/588587/pexels-photo-588587.jpeg"
+      },
+      {
+        name: "Bus",
+        img: "https://images.pexels.com/photos/210182/pexels-photo-210182.jpeg"
       }
     ]
   }
@@ -44,77 +65,56 @@ const questions = [
 
 export default function App() {
   const [index, setIndex] = useState(0);
+
   const [message, setMessage] = useState("");
 
+  const [started, setStarted] = useState(false);
+
   const recognitionRef = useRef(null);
+
   const lockRef = useRef(true);
-  const audioRef = useRef(null);
 
   const q = questions[index];
 
-  // 🎵 MUSIC
-  useEffect(() => {
-    const startMusic = () => {
-      if (audioRef.current) {
-        audioRef.current.volume = 0.25;
-
-        audioRef.current.play().catch(() => {});
-      }
-    };
-
-    window.addEventListener("click", startMusic, {
-      once: true
-    });
-
-    return () => {
-      window.removeEventListener("click", startMusic);
-    };
-  }, []);
-
-  // 🔊 SPEAK
+  // 🔊 SPEAK FUNCTION
   const speak = (text, cb) => {
+
     window.speechSynthesis.cancel();
 
     const msg = new SpeechSynthesisUtterance(text);
 
-    const loadVoices = () => {
-      const voices = window.speechSynthesis.getVoices();
+    const voices = window.speechSynthesis.getVoices();
 
-      msg.voice =
-        voices.find((v) => v.lang.includes("hi")) ||
-        voices[0];
+    msg.voice =
+      voices.find((v) => v.lang.includes("hi")) ||
+      voices[0];
 
-      msg.lang = "hi-IN";
+    msg.lang = "hi-IN";
 
-      msg.rate = 0.95;
+    msg.rate = 0.9;
 
-      msg.pitch = 1.2;
+    msg.pitch = 1.1;
 
-      msg.onend = () => {
-        if (cb) cb();
-      };
+    msg.volume = 1;
 
-      window.speechSynthesis.speak(msg);
+    msg.onend = () => {
+      if (cb) cb();
     };
 
-    if (
-      window.speechSynthesis.getVoices().length === 0
-    ) {
-      window.speechSynthesis.onvoiceschanged =
-        loadVoices;
-    } else {
-      loadVoices();
-    }
+    window.speechSynthesis.speak(msg);
   };
 
-  // 🎤 LISTEN
+  // 🎤 START LISTENING
   const startListening = () => {
+
     const SR =
       window.SpeechRecognition ||
       window.webkitSpeechRecognition;
 
     if (!SR) {
-      alert("Speech Recognition not supported");
+      alert(
+        "Speech Recognition supported नाही 😔 Chrome वापरा"
+      );
       return;
     }
 
@@ -122,7 +122,7 @@ export default function App() {
 
     recognitionRef.current = rec;
 
-    rec.lang = "hi-IN";
+    rec.lang = "en-US";
 
     rec.continuous = false;
 
@@ -133,6 +133,7 @@ export default function App() {
     rec.start();
 
     rec.onresult = (e) => {
+
       const voice = e.results[0][0].transcript
         .toLowerCase()
         .trim();
@@ -147,47 +148,50 @@ export default function App() {
     };
 
     rec.onend = () => {
+
       if (!lockRef.current) {
+
         setTimeout(() => {
+
           rec.start();
+
         }, 800);
+
       }
     };
   };
 
-  // 🌟 START
+  // ▶ START GAME
+  const startGame = () => {
+
+    setStarted(true);
+
+    speechSynthesis.getVoices();
+
+    speak(
+      "🎮 Welcome childrens! चला मजा करूया!",
+      () => {
+
+        setTimeout(() => {
+
+          speak(q.speak, () => {
+
+            lockRef.current = false;
+
+            startListening();
+
+          });
+
+        }, 1200);
+
+      }
+    );
+  };
+
+  // 🔁 NEXT QUESTION
   useEffect(() => {
-    const startGame = () => {
-      speak(
-        "🎮 Welcome childrens! चला मजा करूया!",
-        () => {
-          setTimeout(() => {
-            speak(q.speak, () => {
-              lockRef.current = false;
 
-              startListening();
-            });
-          }, 1000);
-        }
-      );
-    };
-
-    // browser interaction required
-    window.addEventListener("click", startGame, {
-      once: true
-    });
-
-    return () => {
-      window.removeEventListener(
-        "click",
-        startGame
-      );
-    };
-  }, []);
-
-  // 🔁 QUESTION CHANGE
-  useEffect(() => {
-    if (index === 0) return;
+    if (index === 0 || !started) return;
 
     setMessage("");
 
@@ -198,16 +202,22 @@ export default function App() {
     }
 
     setTimeout(() => {
+
       speak(q.speak, () => {
+
         lockRef.current = false;
 
         startListening();
+
       });
-    }, 800);
+
+    }, 1200);
+
   }, [index]);
 
-  // ✅ CHECK
+  // ✅ CHECK ANSWER
   const checkAnswer = (voice) => {
+
     const cleanedVoice = voice
       .toLowerCase()
       .replace(/[^a-zA-Z ]/g, "")
@@ -223,9 +233,11 @@ export default function App() {
       cleanedAnswer.includes(cleanedVoice);
 
     if (isCorrect) {
-      const msg = `हो ${q.answer} correct answer`;
 
-      setMessage(msg + " 👏");
+      const msg =
+        ` हो ${q.answer} correct answer`;
+
+      setMessage("🎊"+msg + "👏");
 
       speak(msg);
 
@@ -238,88 +250,158 @@ export default function App() {
       lockRef.current = true;
 
       setTimeout(() => {
-        setIndex((p) => (p + 1) % questions.length);
-      }, 2500);
+
+        setIndex((p) =>
+          (p + 1) % questions.length
+        );
+
+      }, 3000);
+
     } else {
+
       setMessage("😄 पुन्हा प्रयत्न करा!");
 
       speak("पुन्हा प्रयत्न करा");
+
     }
   };
 
   return (
-    <>
-      {/* 🎵 MUSIC */}
-      <audio ref={audioRef} loop>
-        <source src="https://www.bensound.com/bensound-music/bensound-littleidea.mp3" />
-      </audio>
 
-      {/* 🌈 MAIN */}
-      <div className="min-h-screen relative flex flex-col items-center justify-center p-4 sm:p-6 overflow-hidden bg-gradient-to-br from-sky-300 via-pink-300 to-yellow-200">
+    <div className="min-h-screen relative flex flex-col items-center justify-center overflow-hidden p-4 bg-gradient-to-br from-sky-300 via-pink-300 to-yellow-200">
 
-        {/* DECOR */}
-        <div className="absolute text-5xl top-5 left-5 animate-bounce">
-          ☁️
-        </div>
+      {/* 🌈 DECOR */}
+      <div className="absolute text-6xl top-5 left-5 animate-bounce">
+        ☁️
+      </div>
 
-        <div className="absolute text-5xl top-10 right-10 animate-bounce">
-          🌈
-        </div>
+      <div className="absolute text-6xl top-10 right-10 animate-bounce">
+        🌈
+      </div>
 
-        <div className="absolute text-5xl bottom-10 left-10 animate-bounce">
-          🌟
-        </div>
+      <div className="absolute text-6xl bottom-10 left-10 animate-bounce">
+        🌟
+      </div>
 
-        <div className="absolute text-5xl bottom-5 right-5 animate-bounce">
-          🎊
-        </div>
+      <div className="absolute text-6xl bottom-5 right-5 animate-bounce">
+        🎊
+      </div>
 
-        {/* TITLE */}
-        <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold text-white drop-shadow-2xl animate-pulse text-center">
-          🎮 Kids Cartoon Learning World 🎈
-        </h1>
+      {/* 🎮 TITLE */}
+      <h1 className="text-4xl sm:text-6xl font-extrabold text-white drop-shadow-2xl animate-pulse text-center">
 
-        {/* QUESTION */}
-        <div className="mt-8 bg-white/90 p-6 sm:p-8 rounded-[40px] shadow-2xl border-4 border-yellow-300 w-[95%] sm:w-[90%] max-w-3xl text-center">
-          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-purple-700">
-            {q.question}
-          </h2>
-        </div>
+        🎮 Kids Cartoon Learning World 🎈
 
-        {/* OPTIONS */}
-        <div className="mt-10 w-full flex justify-center">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-10">
+      </h1>
+
+      {/* ▶ START BUTTON */}
+      {!started && (
+
+        <button
+          onClick={startGame}
+          className="
+          mt-10
+          px-10
+          py-5
+          text-3xl
+          font-bold
+          bg-yellow-400
+          hover:bg-yellow-500
+          rounded-full
+          shadow-2xl
+          animate-bounce
+        "
+        >
+
+          ▶ START GAME
+
+        </button>
+
+      )}
+
+      {/* ❓ QUESTION */}
+      {started && (
+
+        <>
+          <div className="mt-8 bg-white/90 p-6 sm:p-8 rounded-[40px] shadow-2xl border-4 border-yellow-300 w-[95%] sm:w-[90%] max-w-3xl text-center">
+
+            <h2 className="text-2xl sm:text-4xl font-bold text-purple-700">
+
+              {q.question}
+
+            </h2>
+
+          </div>
+
+          {/* 🖼 OPTIONS */}
+          <div className="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
 
             {q.options.map((opt, i) => (
+
               <div
                 key={i}
                 onClick={() =>
-                  checkAnswer(opt.name.toLowerCase())
+                  checkAnswer(
+                    opt.name.toLowerCase()
+                  )
                 }
-                className="w-[260px] sm:w-[300px] lg:w-[340px] h-[360px] sm:h-[400px] lg:h-[440px] bg-white rounded-[40px] shadow-2xl border-4 border-pink-300 flex flex-col items-center justify-center hover:scale-105 transition cursor-pointer"
+                className="
+                w-[280px]
+                h-[400px]
+                bg-white
+                rounded-[40px]
+                shadow-2xl
+                border-4
+                border-pink-300
+                flex
+                flex-col
+                items-center
+                justify-center
+                hover:scale-105
+                transition
+                cursor-pointer
+              "
               >
+
                 <img
                   src={opt.img}
                   alt={opt.name}
-                  className="w-[200px] sm:w-[240px] lg:w-[280px] h-[180px] sm:h-[200px] lg:h-[220px] object-cover rounded-3xl shadow-lg"
+                  className="
+                  w-[220px]
+                  h-[220px]
+                  object-cover
+                  rounded-3xl
+                  shadow-lg
+                "
                 />
 
-                <h2 className="mt-5 text-2xl lg:text-3xl font-extrabold text-purple-700">
+                <h2 className="mt-5 text-3xl font-extrabold text-purple-700">
+
                   {opt.name}
+
                 </h2>
+
               </div>
+
             ))}
 
           </div>
-        </div>
 
-        {/* MESSAGE */}
-        {message && (
-          <div className="mt-10 bg-white px-8 py-4 rounded-full text-2xl lg:text-3xl font-bold text-green-600 animate-bounce shadow-2xl text-center">
-            {message}
-          </div>
-        )}
-      </div>
-    </>
+          {/* 💬 MESSAGE */}
+          {message && (
+
+            <div className="mt-10 bg-white px-8 py-4 rounded-full text-2xl lg:text-3xl font-bold text-green-600 animate-bounce shadow-2xl text-center">
+
+              {message}
+
+            </div>
+
+          )}
+
+        </>
+
+      )}
+
+    </div>
   );
 }
