@@ -64,35 +64,38 @@ export default function App() {
 
   // 🎤 MIC FIXED
   const startListening = () => {
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) return;
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) return;
 
-    const rec = new SR();
-    recognitionRef.current = rec;
+  const rec = new SR();
+  recognitionRef.current = rec;
 
-    rec.lang = "hi-IN";
-    rec.continuous = false;
-    rec.interimResults = false;
+  rec.lang = "hi-IN";
+  rec.continuous = false; // 🔥 IMPORTANT FIX
+  rec.interimResults = false;
+  rec.maxAlternatives = 1;
 
-    rec.start();
+  rec.start();
 
-    rec.onresult = (e) => {
-      const voice =
-        e.results[0][0].transcript.toLowerCase().trim();
+  rec.onresult = (e) => {
+    const voice =
+      e.results[0][0].transcript.toLowerCase().trim();
 
-      checkAnswer(voice);
-    };
+    console.log("Heard:", voice);
 
-    rec.onend = () => {
-      if (!lockRef.current) {
-        setTimeout(() => rec.start(), 800);
-      }
-    };
+    checkAnswer(voice);
   };
+
+  rec.onend = () => {
+    if (!lockRef.current) {
+      setTimeout(() => rec.start(), 800); // small delay FIX
+    }
+  };
+};
 
   // 🌟 START
   useEffect(() => {
-    speak("🎮 Welcome Kids! चला मजा करूया!", () => startListening());
+    speak("🎮 Welcome childrens! चला मजा करूया!", () => startListening());
   }, []);
 
   // 🔁 QUESTION CHANGE
@@ -112,38 +115,43 @@ export default function App() {
 
   // ✅ ANSWER CHECK
   const checkAnswer = (voice) => {
-    const cleanedVoice = voice
-      .toLowerCase()
-      .replace(/[^a-zA-Z ]/g, "")
-      .trim();
+  const cleanedVoice = voice
+    .toLowerCase()
+    .replace(/[^a-zA-Z ]/g, "")
+    .trim();
 
-    const cleanedAnswer = q.answer.toLowerCase();
+  const cleanedAnswer = q.answer.toLowerCase();
 
-    const isCorrect =
-      cleanedVoice.includes(cleanedAnswer) ||
-      cleanedAnswer.includes(cleanedVoice);
+  const isCorrect =
+    cleanedVoice === cleanedAnswer ||
+    cleanedVoice.includes(cleanedAnswer) ||
+    cleanedAnswer.includes(cleanedVoice);
 
-    if (isCorrect) {
-      const msg = `हो ${q.answer} correct answer!👏`;
+  console.log("Clean:", cleanedVoice, "Answer:", cleanedAnswer);
 
-      setMessage(msg);
-      speak(msg);
+  if (isCorrect) {
+    const msg = `हो ${q.answer} correct answer!👏`;
 
-      confetti({
-        particleCount: 300,
-        spread: 180,
-        origin: { y: 0.6 }
-      });
+    setMessage(msg);
+    speak(msg);
 
-      setTimeout(() => {
-        setIndex((p) => (p + 1) % questions.length);
-      }, 2000);
+    confetti({
+      particleCount: 300,
+      spread: 180,
+      origin: { y: 0.6 }
+    });
 
-    } else {
-      setMessage("😄 पुन्हा प्रयत्न करा!");
-      speak("पुन्हा प्रयत्न करा");
-    }
-  };
+    lockRef.current = true;
+
+    setTimeout(() => {
+      setIndex((p) => (p + 1) % questions.length);
+    }, 2000);
+
+  } else {
+    setMessage("😄 पुन्हा प्रयत्न करा!");
+    speak("पुन्हा प्रयत्न करा");
+  }
+};
 
   return (
     <>
